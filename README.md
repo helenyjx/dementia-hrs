@@ -88,8 +88,7 @@ R dependencies (for `readHRS.R`): `readr`
 
 ### Data Availability
 
-This study uses restricted-access survey data from the **Health and Retirement Study (HRS)**, sponsored by the National Institute on Aging (NIA U01AG009740) and conducted by the University of Michigan. Raw HRS files are **not redistributed in this repository** and must be obtained directly by registered researchers at [https://hrs.isr.umich.edu](https://hrs.isr.umich.edu). This repository does not distribute HRS data.
-
+This study uses restricted-access survey data from the **Health and Retirement Study (HRS)**, sponsored by the National Institute on Aging (NIA U01AG009740) and conducted by the University of Michigan. Raw HRS files are **not redistributed in this repository** and must be obtained directly by registered researchers at [https://hrs.isr.umich.edu](https://hrs.isr.umich.edu). 
 ### Predictors and Outcome
 
 The final predictor set comprises **77 variables** across seven domains: demographic/family characteristics, socioeconomic/geographic factors, self-reported health and behaviors, chronic conditions, healthcare utilization, functional limitations (ADL/IADL), and mobility/physical functioning. The binary outcome (`y` / `demcls`) is derived from HRS's validated self-respondent (TICS-m) and proxy-respondent cognitive assessment protocols, using thresholds validated against the Aging, Demographics, and Memory Study (ADAMS).
