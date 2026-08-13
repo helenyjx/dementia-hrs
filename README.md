@@ -88,7 +88,8 @@ R dependencies (for `readHRS.R`): `readr`
 
 ### Data Availability
 
-This study uses restricted-access survey data from the **Health and Retirement Study (HRS)**, sponsored by the National Institute on Aging (NIA U01AG009740) and conducted by the University of Michigan. Raw HRS files are **not redistributed in this repository** and must be obtained directly by registered researchers at [https://hrs.isr.umich.edu](https://hrs.isr.umich.edu). 
+This study uses restricted-access survey data from the **Health and Retirement Study (HRS)**, sponsored by the National Institute on Aging (NIA U01AG009740) and conducted by the University of Michigan. Raw HRS files are **not redistributed in this repository** and must be obtained directly by registered researchers at [https://hrs.isr.umich.edu](https://hrs.isr.umich.edu). This repository does not distribute HRS data.
+
 ### Predictors and Outcome
 
 The final predictor set comprises **77 variables** across seven domains: demographic/family characteristics, socioeconomic/geographic factors, self-reported health and behaviors, chronic conditions, healthcare utilization, functional limitations (ADL/IADL), and mobility/physical functioning. The binary outcome (`y` / `demcls`) is derived from HRS's validated self-respondent (TICS-m) and proxy-respondent cognitive assessment protocols, using thresholds validated against the Aging, Demographics, and Memory Study (ADAMS).
@@ -161,7 +162,3 @@ Model performance is assessed using **AUROC**, **AUPRC**, **Accuracy**, **Precis
 ## Feature Importance
 
 Predictor importance is computed using permutation-based importance on the external test set: each predictor is permuted 10–25 times, and importance is defined as the mean decrease in AUPRC (Breiman's permutation paradigm). One-hot encoded categorical variables are aggregated back to their parent construct (e.g., education, census division, marital status, race/ethnicity) before ranking.
-
-## Data Availability
-
-HRS data are publicly available to registered researchers upon application at [https://hrs.isr.umich.edu](https://hrs.isr.umich.edu). This repository does not distribute HRS data.
