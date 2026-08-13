@@ -63,7 +63,7 @@ dementia/
 * **`readHRS.R`** — Template script that reads a raw fixed-width HRS data file (`.DA`) together with its data dictionary (`.DCT`) and writes a labeled CSV.
 ## Requirements
 
-Core dependencies (Python 3.10.10 for classical models; Python 3.12.7 for GAT/TabICL, per the paper's Methods §2.4.2):
+Core dependencies (Python 3.10.10 for classical models; Python 3.12.7 for GAT/TabICL, per the paper's Methods section 2.4.2):
 
 ```
 numpy
@@ -156,7 +156,7 @@ Each notebook imports the shared modules (`imputation`, `internal_test`/`externa
 
 ## Evaluation
 
-Model performance is assessed using **AUROC**, **AUPRC**, **Accuracy**, **Precision**, **Recall**, and **F1**. Because dementia incidence is a minority outcome, **AUPRC** is emphasized as the primary metric for hyperparameter selection and model comparison, consistent with the paper's evaluation strategy (§2.4.3).
+Model performance is assessed using **AUROC**, **AUPRC**, **Accuracy**, **Precision**, **Recall**, and **F1**. Because dementia incidence is a minority outcome, **AUPRC** is emphasized as the primary metric for hyperparameter selection and model comparison, consistent with the paper's evaluation strategy (section 2.4.3).
 
 ## Feature Importance
 
