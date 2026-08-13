@@ -60,8 +60,7 @@ dementia/
 * **`feature_importance_COX.py`** — Analogous permutation importance implementation for the `CoxPHFitter` survival model (permutes partial hazard predictions and scores the resulting change in AUPRC).
 * **`neuralclassifier_fixed.py`** — `NeuralClassifier` base class plus `MLPClassifier` / `GNNClassifier` / `GCNClassifier` / `GATClassifier` wrappers implementing training loops, focal loss, class-weighted BCE loss, and optional SMOTE oversampling for the imbalanced dementia outcome.
 * **`nnblocks.py`** — Underlying PyTorch / PyTorch Geometric network blocks: `MLP`, `GNN` (GraphSAGE), `GCN`, and `GAT`, each with residual and batch-normalization variants.
-* **`readHRS.R`** — Template script that reads a raw fixed-width HRS data file (`.DA`) together with its data dictionary (`.DCT`) and writes a labeled CSV; re-run per wave to populate `data/original data/`.
-
+* **`readHRS.R`** — Template script that reads a raw fixed-width HRS data file (`.DA`) together with its data dictionary (`.DCT`) and writes a labeled CSV.
 ## Requirements
 
 Core dependencies (Python 3.10.10 for classical models; Python 3.12.7 for GAT/TabICL, per the paper's Methods §2.4.2):
@@ -89,8 +88,7 @@ R dependencies (for `readHRS.R`): `readr`
 
 ### Data Availability
 
-This study uses restricted-access survey data from the **Health and Retirement Study (HRS)**, sponsored by the National Institute on Aging (NIA U01AG009740) and conducted by the University of Michigan. Raw HRS files are **not redistributed in this repository** and must be obtained directly by registered researchers at [https://hrs.isr.umich.edu](https://hrs.isr.umich.edu). Place the downloaded RAND HRS longitudinal file and per-wave raw data under `data/original data/` before running the pipeline.
-
+This study uses restricted-access survey data from the **Health and Retirement Study (HRS)**, sponsored by the National Institute on Aging (NIA U01AG009740) and conducted by the University of Michigan. Raw HRS files are **not redistributed in this repository** and must be obtained directly by registered researchers at [https://hrs.isr.umich.edu](https://hrs.isr.umich.edu). 
 ### Predictors and Outcome
 
 The final predictor set comprises **77 variables** across seven domains: demographic/family characteristics, socioeconomic/geographic factors, self-reported health and behaviors, chronic conditions, healthcare utilization, functional limitations (ADL/IADL), and mobility/physical functioning. The binary outcome (`y` / `demcls`) is derived from HRS's validated self-respondent (TICS-m) and proxy-respondent cognitive assessment protocols, using thresholds validated against the Aging, Demographics, and Memory Study (ADAMS).
