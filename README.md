@@ -43,7 +43,6 @@ dementia/
 │   ├── LightGBM.ipynb, CatBoost.ipynb
 │   └── GAT.ipynb, RealMLP.ipynb, TabICL-transformer.ipynb
 └── data/
-    ├── original data/                     # Raw HRS wave files (.DA/.DCT/.DO) — not included, see Data Availability
     ├── preprocessed data/                 # Per-year cleaned/encoded CSVs produced by preprocess_*.ipynb
     ├── 2000-2006/                         # Model-ready folds for the 6-year prediction horizon
     └── 2000-2008/                         # Model-ready folds for the 8-year prediction horizon
