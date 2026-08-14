@@ -161,3 +161,7 @@ Model performance is assessed using **AUROC**, **AUPRC**, **Accuracy**, **Precis
 ## Feature Importance
 
 Predictor importance is computed using permutation-based importance on the external test set: each predictor is permuted 10–25 times, and importance is defined as the mean decrease in AUPRC (Breiman's permutation paradigm). One-hot encoded categorical variables are aggregated back to their parent construct (e.g., education, census division, marital status, race/ethnicity) before ranking.
+
+## Key Results
+
+Across nine benchmarked models spanning regression, Bayesian, tree-based, and deep learning families, **TabICL, LightGBM, and CatBoost consistently achieved the strongest predictive performance** in both internal and external validation, with comparable discrimination (AUROC differences under 1% between the three at external validation) but larger separation on precision-oriented metrics — TabICL held a modest, consistent edge in AUPRC and precision, while LightGBM and CatBoost traded that for higher recall. Penalized logistic regression and RealMLP formed a second performance tier with moderate but stable results, while GAT and Gaussian Naïve Bayes ranked lowest across all metrics and horizons. Model rankings were stable across the 6- and 8-year prediction windows, indicating good temporal generalizability. Permutation-based feature importance identified **age and educational attainment as the most consistently influential predictors** across all nine models.
