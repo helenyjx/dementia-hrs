@@ -1,4 +1,10 @@
 data/original data/
 
+# Benchmark outputs: imputation cache and individual-level predictions (HRS-derived data)
+results/cache/
+results/**/test_predictions.csv
+results/**/temporal_predictions.csv
+__pycache__/
+
 # Local revision notes (not published)
 REVISION_LOG.md

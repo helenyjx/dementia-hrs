@@ -233,17 +233,51 @@ class GATClassifier(NeuralClassifier):
             self, hidden_layer_sizes,
             max_iter=50, weight_decay=1e-4, learning_rate=5e-3, momentum=0.9, squares=0.999, optimizer_t='sgdm',
             dropout_p=0.0, alpha=0.75, use_residual=True, use_batch_norm=False, heads=1,
-            batch_size=512, shuffle=True, random_state=42, cuda=False, loss_type='weighted_bce') -> None:
+            batch_size=512, shuffle=True, random_state=42, cuda=False, loss_type='weighted_bce',
+            reference_size=255, standardize=False) -> None:
         super().__init__(hidden_layer_sizes, max_iter, weight_decay, learning_rate, momentum, squares, optimizer_t,
                          dropout_p, use_residual, use_batch_norm, batch_size, shuffle, random_state, cuda, loss_type)
         self.alpha = alpha
         self.heads = heads
+        self.reference_size = reference_size
+        self.standardize = standardize
 
     def _build_model(self):
         self.model = GAT(self.input_size, self.hidden_layer_sizes, self.output_size,
                          self.dropout_p, self.alpha, self.use_residual, self.use_batch_norm, heads=self.heads)
         if self.cuda_:
             self.model = self.model.cuda()
+
+    def _scale(self, X):
+        return (X - self.mean_) / self.std_ if self.standardize else X
+
+    def fit(self, X, y, **kwargs):
+        """Graph edges are built within each mini-batch from the cosine similarity of the predictors (standardized if standardize=True):
+        two participants are connected if their absolute similarity is in the top (1 - alpha) share of all pairs in
+        the batch. The outcome is not used. A fixed reference set of training participants is stored for prediction."""
+        X_np = X.to_numpy(dtype=np.float32)
+        self.mean_ = X_np.mean(axis=0)
+        std = X_np.std(axis=0)
+        self.std_ = np.where(std > 0, std, 1.0).astype(np.float32)
+        X = self._scale(X)
+        rng = np.random.RandomState(self.random_state)
+        idx = rng.choice(len(X), size=min(self.reference_size, len(X)), replace=False)
+        self.reference_ = torch.tensor(X.to_numpy(dtype=np.float32)[idx])
+        return super().fit(X, y, **kwargs)
+
+    def predict_proba(self, X):
+        """Each participant is predicted in a graph formed with the fixed training reference set, so the prediction
+        depends only on that participant and the training data, not on the other participants being predicted."""
+        X_t = torch.tensor(self._scale(X).to_numpy(dtype=np.float32))
+        device = 'cuda' if self.cuda_ else 'cpu'
+        reference = self.reference_.to(device)
+        out = np.empty(len(X_t), dtype=np.float64)
+        self.model.eval()
+        with torch.no_grad():
+            for i in range(len(X_t)):
+                graph = torch.cat([reference, X_t[i:i + 1].to(device)], dim=0)
+                out[i] = float(self.model(graph)[-1])
+        return np.stack([1 - out, out], 1)
 
 
 if __name__ == "__main__":
