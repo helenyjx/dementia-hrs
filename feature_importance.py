@@ -13,6 +13,10 @@ def get_group_name(col):
         return "mstat (marital status)"
     elif col.startswith("raceeth"):
         return "raceeth (ethnicity)"
+    elif col.startswith("lbrf"):
+        return "lbrf (labor force status)"
+    elif col.endswith("dontdo"):
+        return col[:-len("dontdo")]  # "don't do" dummy is grouped with its functional item
     else:
         return col  # keep as-is if not part of dummy set
 
