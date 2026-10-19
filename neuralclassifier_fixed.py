@@ -5,6 +5,7 @@ from tqdm import tqdm
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from imblearn.over_sampling import SMOTE
 
@@ -234,13 +235,14 @@ class GATClassifier(NeuralClassifier):
             max_iter=50, weight_decay=1e-4, learning_rate=5e-3, momentum=0.9, squares=0.999, optimizer_t='sgdm',
             dropout_p=0.0, alpha=0.75, use_residual=True, use_batch_norm=False, heads=1,
             batch_size=512, shuffle=True, random_state=42, cuda=False, loss_type='weighted_bce',
-            reference_size=255, standardize=False) -> None:
+            reference_size=255, standardize=False, max_restarts=3) -> None:
         super().__init__(hidden_layer_sizes, max_iter, weight_decay, learning_rate, momentum, squares, optimizer_t,
                          dropout_p, use_residual, use_batch_norm, batch_size, shuffle, random_state, cuda, loss_type)
         self.alpha = alpha
         self.heads = heads
         self.reference_size = reference_size
         self.standardize = standardize
+        self.max_restarts = max_restarts
 
     def _build_model(self):
         self.model = GAT(self.input_size, self.hidden_layer_sizes, self.output_size,
@@ -252,6 +254,24 @@ class GATClassifier(NeuralClassifier):
         return (X - self.mean_) / self.std_ if self.standardize else X
 
     def fit(self, X, y, **kwargs):
+        """Fit with a restart rule: if training collapses to a constant output (a dead network, which can happen
+        with larger learning rates), refit with the next random seed, up to max_restarts times. The number of
+        restarts used is stored in n_restarts_."""
+        seed = self.random_state
+        try:
+            for attempt in range(self.max_restarts + 1):
+                self.random_state = seed + attempt
+                self._fit_once(X, y, **kwargs)
+                p_train = self.predict_proba(X)[:, 1]
+                if np.ptp(p_train) > 1e-6:
+                    break
+        finally:
+            self.random_state = seed
+        self.n_restarts_ = attempt
+        self.collapsed_ = bool(np.ptp(p_train) <= 1e-6)
+        return self
+
+    def _fit_once(self, X, y, **kwargs):
         """Graph edges are built within each mini-batch from the cosine similarity of the predictors (standardized if standardize=True):
         two participants are connected if their absolute similarity is in the top (1 - alpha) share of all pairs in
         the batch. The outcome is not used. A fixed reference set of training participants is stored for prediction."""
@@ -271,12 +291,23 @@ class GATClassifier(NeuralClassifier):
         X_t = torch.tensor(self._scale(X).to_numpy(dtype=np.float32))
         device = 'cuda' if self.cuda_ else 'cpu'
         reference = self.reference_.to(device)
+        n_ref = len(reference)
+        n_nodes = n_ref + 1
         out = np.empty(len(X_t), dtype=np.float64)
         self.model.eval()
         with torch.no_grad():
-            for i in range(len(X_t)):
-                graph = torch.cat([reference, X_t[i:i + 1].to(device)], dim=0)
-                out[i] = float(self.model(graph)[-1])
+            # Several participants per forward pass: their graphs are stacked block-diagonally, so messages never
+            # cross graphs and the result equals predicting each participant separately.
+            for start in range(0, len(X_t), 64):
+                chunk = X_t[start:start + 64].to(device)
+                k = len(chunk)
+                graphs = torch.cat([reference.unsqueeze(0).expand(k, -1, -1), chunk.unsqueeze(1)], dim=1)
+                sim = torch.abs(F.cosine_similarity(graphs[:, None, :, :], graphs[:, :, None, :], dim=-1))
+                eps = torch.quantile(sim.reshape(k, -1), self.alpha, dim=1, interpolation='nearest')
+                g, row, col = torch.where(sim >= eps[:, None, None])
+                edge_index = torch.stack([row + g * n_nodes, col + g * n_nodes])
+                pred = self.model(graphs.reshape(k * n_nodes, -1), edge_index)
+                out[start:start + k] = pred.reshape(k, n_nodes)[:, -1].double().cpu().numpy()
         return np.stack([1 - out, out], 1)
 
 

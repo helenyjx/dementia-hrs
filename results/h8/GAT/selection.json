@@ -1,0 +1,150 @@
+{
+ "model": "GAT",
+ "horizon": 8,
+ "fixed_params": {
+  "hidden_layer_sizes": "(128, 64, 32)",
+  "max_iter": "50",
+  "use_residual": "True",
+  "use_batch_norm": "False",
+  "batch_size": "256",
+  "random_state": "42",
+  "cuda": "True",
+  "reference_size": "255",
+  "standardize": "False"
+ },
+ "grid": {
+  "learning_rate": [
+   "0.0001",
+   "0.01"
+  ],
+  "dropout_p": [
+   "0.1",
+   "0.5"
+  ]
+ },
+ "per_repeat": [
+  {
+   "repeat": 0,
+   "config": 2,
+   "params": {
+    "learning_rate": 0.01,
+    "dropout_p": 0.1
+   },
+   "val_AUPRC": 0.5911082926257757,
+   "threshold": 0.6825336813926697
+  },
+  {
+   "repeat": 1,
+   "config": 3,
+   "params": {
+    "learning_rate": 0.01,
+    "dropout_p": 0.5
+   },
+   "val_AUPRC": 0.5556220374274197,
+   "threshold": 0.7112380266189575
+  },
+  {
+   "repeat": 2,
+   "config": 2,
+   "params": {
+    "learning_rate": 0.01,
+    "dropout_p": 0.1
+   },
+   "val_AUPRC": 0.5669587424028403,
+   "threshold": 0.8710429668426514
+  },
+  {
+   "repeat": 3,
+   "config": 3,
+   "params": {
+    "learning_rate": 0.01,
+    "dropout_p": 0.5
+   },
+   "val_AUPRC": 0.5776028129301799,
+   "threshold": 0.8091269135475159
+  },
+  {
+   "repeat": 4,
+   "config": 3,
+   "params": {
+    "learning_rate": 0.01,
+    "dropout_p": 0.5
+   },
+   "val_AUPRC": 0.545143783970978,
+   "threshold": 0.7715743184089661
+  },
+  {
+   "repeat": 5,
+   "config": 3,
+   "params": {
+    "learning_rate": 0.01,
+    "dropout_p": 0.5
+   },
+   "val_AUPRC": 0.5568965303237126,
+   "threshold": 0.7273887395858765
+  },
+  {
+   "repeat": 6,
+   "config": 3,
+   "params": {
+    "learning_rate": 0.01,
+    "dropout_p": 0.5
+   },
+   "val_AUPRC": 0.5721204079837439,
+   "threshold": 0.7713341116905212
+  },
+  {
+   "repeat": 7,
+   "config": 2,
+   "params": {
+    "learning_rate": 0.01,
+    "dropout_p": 0.1
+   },
+   "val_AUPRC": 0.5446992424670501,
+   "threshold": 0.8189063668251038
+  },
+  {
+   "repeat": 8,
+   "config": 2,
+   "params": {
+    "learning_rate": 0.01,
+    "dropout_p": 0.1
+   },
+   "val_AUPRC": 0.5849014381731157,
+   "threshold": 0.807248592376709
+  },
+  {
+   "repeat": 9,
+   "config": 3,
+   "params": {
+    "learning_rate": 0.01,
+    "dropout_p": 0.5
+   },
+   "val_AUPRC": 0.574475030398534,
+   "threshold": 0.8128368258476257
+  }
+ ],
+ "temporal": {
+  "config": 2,
+  "params": {
+   "learning_rate": 0.01,
+   "dropout_p": 0.1
+  },
+  "threshold": 0.8130774796009064
+ },
+ "mice_iterations": 20,
+ "versions": {
+  "numpy": "1.26.4",
+  "pandas": "2.2.2",
+  "scikit-learn": "1.6.1",
+  "miceforest": "6.0.3",
+  "lightgbm": "4.5.0",
+  "catboost": "1.2.8",
+  "torch": "2.5.1+cu121",
+  "torch_geometric": "2.6.1",
+  "imbalanced-learn": "0.12.3",
+  "pytabkit": "1.6.1",
+  "tabicl": "0.1.3",
+  "python": "3.12.7"
+ }
+}

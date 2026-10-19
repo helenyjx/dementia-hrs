@@ -70,7 +70,8 @@ def model_specs():
                      {'verbose': 0, 'random_state': 42, 'allow_writing_files': False}),
         'GAT': (GATClassifier, {'learning_rate': [1e-4, 1e-2], 'dropout_p': [0.1, 0.5]},
                 {'hidden_layer_sizes': (128, 64, 32), 'max_iter': 50, 'use_residual': True, 'use_batch_norm': False,
-                 'batch_size': 256, 'random_state': 42, 'cuda': True, 'reference_size': 255, 'standardize': False}),
+                 'batch_size': 256, 'random_state': 42, 'cuda': True, 'reference_size': 255, 'standardize': False,
+                 'max_restarts': 3}),
         'RealMLP': (RealMLP_TD_Classifier, {'batch_size': [128, 256], 'n_epochs': [50, 100]}, {'random_state': 42}),
         'TabICL': (TabICLClassifier, {'n_estimators': [16, 32], 'batch_size': [8, 16]},
                    {'use_amp': True, 'checkpoint_version': 'tabicl-classifier-v1.1-0506.ckpt', 'random_state': 42}),
@@ -85,7 +86,8 @@ def _tabicl_checkpoint(version):
     if not paths:
         return {'version': version, 'path': None, 'sha256': None}
     digest = hashlib.sha256(open(paths[0], 'rb').read()).hexdigest()
-    return {'version': version, 'path': paths[0], 'sha256': digest}
+    rel = paths[0].split(os.path.join('huggingface', 'hub') + os.sep)[-1].replace(os.sep, '/')
+    return {'version': version, 'path': f'huggingface/hub/{rel}', 'sha256': digest}
 
 
 def load_cohorts(horizon):
@@ -219,6 +221,7 @@ def _fit_predict(cls, params, X_fit, y_fit, X_pred):
     model = cls(**params)
     model.fit(X_fit.astype(np.float32), pd.Series(y_fit))
     p = np.asarray(model.predict_proba(X_pred.astype(np.float32)))[:, 1]
+    _fit_predict.restarts = getattr(model, 'n_restarts_', 0)  # GAT restart rule (0 for other models)
     return p, time.time() - t0
 
 
@@ -238,7 +241,8 @@ def run(model_name, horizon, repeats=range(N_REPEATS), out_dir=None):
         for pop in POPULATIONS:
             mask = is_complete if pop == 'complete' else np.ones(len(y_true), bool)
             metric_rows.append({'setting': setting, 'population': pop, 'repeat': repeat, 'config': config,
-                                **metrics(y_true[mask], p[mask], threshold), 'fit_seconds': secs})
+                                **metrics(y_true[mask], p[mask], threshold), 'fit_seconds': secs,
+                                'restarts': _fit_predict.restarts})
 
     grid_rows, metric_rows, pred_rows, selected = [], [], [], []
     val_store = {}  # (repeat, config index) -> validation predictions, for the temporal-validation threshold
@@ -252,7 +256,7 @@ def run(model_name, horizon, repeats=range(N_REPEATS), out_dir=None):
             auprc = average_precision_score(y[va], p_va)
             val_store[(r, k)] = p_va
             grid_rows.append({'repeat': r, 'config': k, **{f'param_{n}': str(v) for n, v in cfg.items()},
-                              'val_AUPRC': auprc, 'fit_seconds': secs})
+                              'val_AUPRC': auprc, 'fit_seconds': secs, 'restarts': _fit_predict.restarts})
             if auprc > best[0]:
                 best = (auprc, k)
         k = best[1]

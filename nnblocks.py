@@ -448,8 +448,9 @@ class GAT(nn.Module):
         edge_index = torch.cat((row.reshape(1, -1), col.reshape(1, -1)), dim=0)
         return edge_index
 
-    def forward(self, x):
-        edge_index = self.create_edge_index(x)
+    def forward(self, x, edge_index=None):
+        if edge_index is None:
+            edge_index = self.create_edge_index(x)
 
         x = F.relu(self.input(x), inplace=True)
         for hidden in self.hiddens:
