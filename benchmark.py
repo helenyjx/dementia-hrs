@@ -47,6 +47,34 @@ NON_PREDICTORS = ('hhidpn', 'demcls', 'y')
 CACHE_DIR = os.path.join(ROOT, 'results', 'cache')
 RESULTS_DIR = os.path.join(ROOT, 'results')
 
+# Outcome definition. 'final' (primary): non-case = assessed dementia-free at the final wave of the window.
+# 'any' (sensitivity): non-case = assessed dementia-free at one or more follow-up waves (all_y.ipynb, *_any).
+OUTCOME = 'final'
+OUTCOME_COLUMNS = {6: ('demcls00-06', 'demcls10-16'), 8: ('demcls00-08', 'demcls10-18')}
+
+
+def _outcome_suffix():
+    return '' if OUTCOME == 'final' else f'_{OUTCOME}'
+
+
+def _clean_columns(columns):
+    """Column-name cleaning used by the data-management notebooks (cell 4)."""
+    return [c.replace('_', '').replace('/', ' or ').replace('.', ' ').replace('-', 'to').replace('+', 'above')
+            .replace('0', '').replace(',', ' ') for c in columns]
+
+
+def build_cohort(year, outcome_column, columns):
+    """Eligible participants of a baseline wave with the given outcome, built like the data-management notebooks:
+    cleaned predictor columns, age > 50 and dementia-free at baseline, inner merge with the non-missing outcome."""
+    wave = pd.read_csv(os.path.join(ROOT, 'data', 'preprocessed data', f'{year}.csv'))
+    wave.columns = _clean_columns(wave.columns)
+    wave = wave[[c for c in columns if c != 'y']]
+    all_y = pd.read_csv(os.path.join(ROOT, 'data', 'preprocessed data', 'all_y.csv'))
+    cohort = wave.merge(all_y[['hhidpn', outcome_column]].dropna(), on='hhidpn', how='inner')
+    cohort = cohort.rename(columns={outcome_column: 'y'})
+    cohort = cohort[(cohort['ageym'] > 50) & (cohort['demcls'] == 0)]
+    return cohort[columns].reset_index(drop=True)
+
 
 def model_specs():
     """name -> (class, hyperparameter grid, fixed arguments). Grids follow Table 1 of the manuscript."""
@@ -93,6 +121,11 @@ def _tabicl_checkpoint(version):
 def load_cohorts(horizon):
     dev = pd.read_csv(os.path.join(ROOT, HORIZONS[horizon]['dev']))
     ext = pd.read_csv(os.path.join(ROOT, HORIZONS[horizon]['ext']))
+    if OUTCOME != 'final':
+        columns = list(dev.columns)
+        dev_col, ext_col = OUTCOME_COLUMNS[horizon]
+        dev = build_cohort('2000', f'{dev_col}_{OUTCOME}', columns)
+        ext = build_cohort('2010', f'{ext_col}_{OUTCOME}', columns)
     predictors = [c for c in dev.columns if c not in NON_PREDICTORS]
     assert list(ext[predictors].columns) == predictors
     for d in (dev, ext):
@@ -172,7 +205,7 @@ def _impute(fit_X, apply_to, seed):
 
 
 def _cache_path(horizon, name):
-    return os.path.join(CACHE_DIR, f'h{horizon}', f'{name}.pkl')
+    return os.path.join(CACHE_DIR, f'h{horizon}{_outcome_suffix()}', f'{name}.pkl')
 
 
 def build_imputations(horizon, repeats=range(N_REPEATS)):
@@ -234,7 +267,8 @@ def run(model_name, horizon, repeats=range(N_REPEATS), out_dir=None):
     dev, ext, P = load_cohorts(horizon)
     y = dev['y'].to_numpy()
     complete = dev[P].notna().all(axis=1).to_numpy()
-    out_dir = out_dir or os.path.join(RESULTS_DIR, f'h{horizon}', model_name)
+    out_dir = out_dir or os.path.join(RESULTS_DIR, *([] if OUTCOME == 'final' else [f'sensitivity_{OUTCOME}']),
+                                      f'h{horizon}', model_name)
     os.makedirs(out_dir, exist_ok=True)
 
     def score(setting, repeat, config, y_true, p, is_complete, threshold, secs):
@@ -300,7 +334,7 @@ def run(model_name, horizon, repeats=range(N_REPEATS), out_dir=None):
     extra = {}
     if model_name == 'TabICL':
         extra['checkpoint'] = _tabicl_checkpoint(fixed['checkpoint_version'])
-    json.dump({'model': model_name, 'horizon': horizon, 'fixed_params': {k: str(v) for k, v in fixed.items()}, **extra,
+    json.dump({'model': model_name, 'horizon': horizon, 'outcome': OUTCOME, 'fixed_params': {k: str(v) for k, v in fixed.items()}, **extra,
                'grid': {k: [str(x) for x in v] for k, v in grid.items()}, 'per_repeat': selected,
                'temporal': {'config': k_ext, 'params': configs[k_ext], 'threshold': thr_ext},
                'mice_iterations': MICE_ITERATIONS, 'versions': versions},

@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from imblearn.over_sampling import SMOTE
+from sklearn.metrics import roc_auc_score
 
 class FocalLoss(nn.Module):
     """Focal Loss for addressing class imbalance"""
@@ -254,21 +255,25 @@ class GATClassifier(NeuralClassifier):
         return (X - self.mean_) / self.std_ if self.standardize else X
 
     def fit(self, X, y, **kwargs):
-        """Fit with a restart rule: if training collapses to a constant output (a dead network, which can happen
-        with larger learning rates), refit with the next random seed, up to max_restarts times. The number of
-        restarts used is stored in n_restarts_."""
+        """Fit with a restart rule: training sometimes collapses (a dead network that gives a constant output for
+        all or almost all participants, which can happen with larger learning rates). A fit is treated as collapsed
+        if its predictions on its own training data are constant or do not discriminate (training AUROC < 0.6); it
+        is then refitted with the next random seed, up to max_restarts times. Only training data are used. The
+        number of restarts is stored in n_restarts_."""
         seed = self.random_state
+        y_arr = np.asarray(y)
         try:
             for attempt in range(self.max_restarts + 1):
                 self.random_state = seed + attempt
                 self._fit_once(X, y, **kwargs)
                 p_train = self.predict_proba(X)[:, 1]
-                if np.ptp(p_train) > 1e-6:
+                collapsed = np.ptp(p_train) <= 1e-6 or roc_auc_score(y_arr, p_train) < 0.6
+                if not collapsed:
                     break
         finally:
             self.random_state = seed
         self.n_restarts_ = attempt
-        self.collapsed_ = bool(np.ptp(p_train) <= 1e-6)
+        self.collapsed_ = bool(collapsed)
         return self
 
     def _fit_once(self, X, y, **kwargs):

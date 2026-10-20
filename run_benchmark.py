@@ -26,7 +26,10 @@ if __name__ == '__main__':
     ap.add_argument('step', choices=['impute', 'fit'])
     ap.add_argument('--horizon', type=int, choices=[6, 8], required=True)
     ap.add_argument('--model', default='all')
+    ap.add_argument('--outcome', default='final', choices=['final', 'any'],
+                    help="'final' (primary) or 'any' (sensitivity analysis of the outcome definition)")
     args = ap.parse_args()
+    benchmark.OUTCOME = args.outcome
     if args.step == 'impute':
         benchmark.build_imputations(args.horizon)
     else:

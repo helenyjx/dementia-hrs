@@ -31,8 +31,8 @@
     "learning_rate": 0.01,
     "dropout_p": 0.5
    },
-   "val_AUPRC": 0.4705360180690834,
-   "threshold": 0.7040878534317017
+   "val_AUPRC": 0.4871869286229166,
+   "threshold": 0.7322693467140198
   },
   {
    "repeat": 1,
@@ -41,8 +41,8 @@
     "learning_rate": 0.01,
     "dropout_p": 0.1
    },
-   "val_AUPRC": 0.4737681335281812,
-   "threshold": 0.6763285994529724
+   "val_AUPRC": 0.4678576328999791,
+   "threshold": 0.6973565816879272
   },
   {
    "repeat": 2,
@@ -51,8 +51,8 @@
     "learning_rate": 0.01,
     "dropout_p": 0.5
    },
-   "val_AUPRC": 0.5399165368694262,
-   "threshold": 0.7319852709770203
+   "val_AUPRC": 0.5224491337863579,
+   "threshold": 0.7172073125839233
   },
   {
    "repeat": 3,
@@ -61,8 +61,8 @@
     "learning_rate": 0.01,
     "dropout_p": 0.5
    },
-   "val_AUPRC": 0.4872095335896497,
-   "threshold": 0.7583039999008179
+   "val_AUPRC": 0.46565521775985264,
+   "threshold": 0.7241754531860352
   },
   {
    "repeat": 4,
@@ -71,8 +71,8 @@
     "learning_rate": 0.01,
     "dropout_p": 0.1
    },
-   "val_AUPRC": 0.5076381247585504,
-   "threshold": 0.8365992307662964
+   "val_AUPRC": 0.5005463284200239,
+   "threshold": 0.8255606889724731
   },
   {
    "repeat": 5,
@@ -81,8 +81,8 @@
     "learning_rate": 0.01,
     "dropout_p": 0.5
    },
-   "val_AUPRC": 0.4179381473055883,
-   "threshold": 0.726469874382019
+   "val_AUPRC": 0.41136963401585785,
+   "threshold": 0.7521361112594604
   },
   {
    "repeat": 6,
@@ -91,18 +91,18 @@
     "learning_rate": 0.01,
     "dropout_p": 0.5
    },
-   "val_AUPRC": 0.46460729319134475,
-   "threshold": 0.6602897644042969
+   "val_AUPRC": 0.4740957020091807,
+   "threshold": 0.7297439575195312
   },
   {
    "repeat": 7,
-   "config": 3,
+   "config": 2,
    "params": {
     "learning_rate": 0.01,
-    "dropout_p": 0.5
+    "dropout_p": 0.1
    },
-   "val_AUPRC": 0.4743607594093664,
-   "threshold": 0.6986477375030518
+   "val_AUPRC": 0.43549213548826843,
+   "threshold": 0.7422230839729309
   },
   {
    "repeat": 8,
@@ -111,8 +111,8 @@
     "learning_rate": 0.01,
     "dropout_p": 0.5
    },
-   "val_AUPRC": 0.45639523108841457,
-   "threshold": 0.5439264178276062
+   "val_AUPRC": 0.49111961552572114,
+   "threshold": 0.5618280172348022
   },
   {
    "repeat": 9,
@@ -121,8 +121,8 @@
     "learning_rate": 0.01,
     "dropout_p": 0.1
    },
-   "val_AUPRC": 0.506045985210123,
-   "threshold": 0.836220920085907
+   "val_AUPRC": 0.43650744802294394,
+   "threshold": 0.6455445885658264
   }
  ],
  "temporal": {
@@ -131,7 +131,7 @@
    "learning_rate": 0.01,
    "dropout_p": 0.5
   },
-  "threshold": 0.7077731490135193
+  "threshold": 0.7269597053527832
  },
  "mice_iterations": 20,
  "versions": {

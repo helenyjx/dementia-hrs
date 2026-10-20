@@ -54,13 +54,14 @@ def _subset(df, population):
 
 def calibration(y, p):
     """Calibration intercept (slope fixed at 1), calibration slope, observed/expected ratio, Brier score."""
-    p = np.clip(np.asarray(p, float), 1e-6, 1 - 1e-6)
+    brier = brier_score_loss(y, p)  # on the unclipped probabilities
+    p = np.clip(np.asarray(p, float), 1e-6, 1 - 1e-6)  # clipping only for the log-odds
     lp = np.log(p / (1 - p))
     y = np.asarray(y, float)
     intercept = sm.GLM(y, np.ones_like(lp), family=sm.families.Binomial(), offset=lp).fit().params[0]
     slope = sm.GLM(y, sm.add_constant(lp), family=sm.families.Binomial()).fit().params[1]
     return {'calibration_intercept': intercept, 'calibration_slope': slope, 'OE_ratio': y.mean() / p.mean(),
-            'Brier': brier_score_loss(y, p)}
+            'Brier': brier}
 
 
 def discrimination(y, p, threshold):
@@ -218,6 +219,15 @@ def runtime_table(horizon):
 
 
 if __name__ == '__main__':
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--outcome', default='final', choices=['final', 'any'],
+                    help="'any': tables for the outcome-definition sensitivity analysis (results/sensitivity_any)")
+    args = ap.parse_args()
+    prefix = ''
+    if args.outcome != 'final':
+        RESULTS = os.path.join(RESULTS, f'sensitivity_{args.outcome}')
+        prefix = f'sensitivity_{args.outcome}_'
     os.makedirs(TABLES, exist_ok=True)
     out = {k: [] for k in ['internal_metrics', 'internal_pairwise', 'temporal_metrics', 'temporal_pairwise',
                            'calibration_curves', 'decision_curves', 'runtime']}
@@ -232,5 +242,5 @@ if __name__ == '__main__':
         out['runtime'].append(runtime_table(horizon))
     for name, frames in out.items():
         if frames:
-            pd.concat(frames, ignore_index=True).to_csv(os.path.join(TABLES, f'{name}.csv'), index=False)
+            pd.concat(frames, ignore_index=True).to_csv(os.path.join(TABLES, f'{prefix}{name}.csv'), index=False)
             print('wrote', name)

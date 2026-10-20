@@ -134,12 +134,22 @@ def run(horizon, models):
             agree_rows.append({'horizon': horizon, 'model': m, 'spearman_rank_correlation': rho,
                                'shared_top10': top10})
     suffix = f'h{horizon}'
-    pd.concat(perm_rows).to_csv(os.path.join(evaluation.TABLES, f'importance_permutation_{suffix}.csv'), index=False)
-    pd.DataFrame(meta_rows).to_csv(os.path.join(evaluation.TABLES, f'importance_meta_{suffix}.csv'), index=False)
+    _save_merged(pd.concat(perm_rows), f'importance_permutation_{suffix}.csv', models)
+    _save_merged(pd.DataFrame(meta_rows), f'importance_meta_{suffix}.csv', models)
     if shap_rows:
-        pd.concat(shap_rows).to_csv(os.path.join(evaluation.TABLES, f'importance_shap_{suffix}.csv'), index=False)
-        pd.DataFrame(agree_rows).to_csv(os.path.join(evaluation.TABLES, f'importance_rank_agreement_{suffix}.csv'),
-                                        index=False)
+        _save_merged(pd.concat(shap_rows), f'importance_shap_{suffix}.csv', models)
+        _save_merged(pd.DataFrame(agree_rows), f'importance_rank_agreement_{suffix}.csv', models)
+
+
+def _save_merged(new, name, models):
+    """Write a table, replacing the rows of the models just run and keeping rows of other models."""
+    path = os.path.join(evaluation.TABLES, name)
+    if os.path.exists(path):
+        old = pd.read_csv(path)
+        new = pd.concat([old[~old['model'].isin(models)], new], ignore_index=True)
+    order = {m: i for i, m in enumerate(evaluation.MODELS)}
+    new = new.sort_values(['model'] + (['rank'] if 'rank' in new else []), key=lambda c: c.map(order) if c.name == 'model' else c)
+    new.to_csv(path, index=False)
 
 
 if __name__ == '__main__':
