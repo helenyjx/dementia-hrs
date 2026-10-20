@@ -74,6 +74,9 @@ torch_geometric
 pytabkit          # RealMLP
 tabicl            # TabICL
 matplotlib
+statsmodels       # calibration (evaluation.py)
+shap==0.46.0      # decision-tree SHAP (importance.py); last release supporting numpy < 2
+python-docx       # optional Word export (supplementary_tables.py)
 tqdm
 ```
 

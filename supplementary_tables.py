@@ -7,8 +7,8 @@ S10 outcome status by cohort and horizon
 S11 participants with complete vs incomplete predictors
 S12 cohort overlap and temporal-validation performance by overlap group
 S13 accuracy (all participants) and complete-case results
-S14 paired differences between models, internal validation
-S15 paired differences between models, temporal validation
+S14 paired differences between models, internal validation; S14b 8-year vs 6-year per model
+S15 paired differences between models, temporal validation; S15b 8-year vs 6-year per model
 S16 selected hyperparameters and decision thresholds
 S17 runtime
 S18 SHAP vs permutation importance
@@ -171,6 +171,22 @@ def pairwise_table(name):
     return out.drop(columns=['horizon', 'oa', 'ob', 'metric', 'om'])
 
 
+def horizon_comparison(setting):
+    d = read('horizon_comparison.csv')
+    d = ordered(d[d['setting'] == setting])
+    order = {'AUROC': 0, 'AUPRC': 1, 'F1': 2, 'Brier': 3}
+    d = d.assign(om=d['metric'].map(order)).sort_values('om', kind='stable')
+    rows = []
+    for _, r in d.iterrows():
+        k, p = r['metric'], r['p_two_sided']
+        diff = (f'{100 * r["difference_8y_minus_6y"]:.1f} ({100 * r["ci_low"]:.1f} to {100 * r["ci_high"]:.1f}) points'
+                if k != 'Brier' else f'{r["difference_8y_minus_6y"]:.4f} ({r["ci_low"]:.4f} to {r["ci_high"]:.4f})')
+        rows.append({'Metric': METRIC_LABEL[k], 'Model': NAMES[r['model']], '6-year': fmt(r['estimate_6y'], metric=k),
+                     '8-year': fmt(r['estimate_8y'], metric=k), 'Difference, 8-year - 6-year (95% CI)': diff,
+                     'p': '<0.001' if p < 0.001 else f'{p:.3f}'})
+    return pd.DataFrame(rows)
+
+
 def _params(p):
     return ', '.join(f'{k}={v}' for k, v in p.items()) if p else '(defaults)'
 
@@ -254,8 +270,15 @@ TITLES = {
             'sensitivity analysis).',
     'S14': 'Supplementary Table S14. Paired differences between models, internal validation (all participants). '
            'Corrected resampled t intervals and p values; relative difference with respect to model B.',
+    'S14b': 'Supplementary Table S14b. 8-year vs 6-year performance of each model, internal validation (all '
+            'participants). The horizons use different cohorts and splits (prevalence 11.7% vs 15.6%), so the '
+            'difference of the means has a t interval with the two corrected variances added (conservative). AUPRC, '
+            'F1, and Brier score depend on prevalence; AUROC is the comparable measure.',
     'S15': 'Supplementary Table S15. Paired differences between models, temporal validation (all participants). '
            'Household cluster-bootstrap intervals and p values; relative difference with respect to model B.',
+    'S15b': 'Supplementary Table S15b. 8-year vs 6-year performance of each model, temporal validation (all '
+            'participants; prevalence 11.6% vs 15.9%). 95% CIs from a joint household cluster bootstrap over both '
+            '2010 cohorts. AUPRC, F1, and Brier score depend on prevalence; AUROC is the comparable measure.',
     'S16': 'Supplementary Table S16. Selected hyperparameters and decision thresholds (selection by validation AUPRC; '
            'threshold maximizing F1 on the validation set; temporal threshold = median of the internal thresholds).',
     'S17': 'Supplementary Table S17. Runtime: all fits of the hyperparameter search and the final refits (median '
@@ -274,7 +297,9 @@ def build():
     return {'Table2': metric_table(i, MAIN_METRICS), 'Table3': metric_table(t, MAIN_METRICS),
             'S10': t10_outcome_status(), 'S11': t11_complete_vs_incomplete(), 'S12': t12_overlap(),
             'S13a': s13a, 'S13b': s13b, 'S14': pairwise_table('internal_pairwise.csv'),
-            'S15': pairwise_table('temporal_pairwise.csv'), 'S16': t16_selection(), 'S17': t17_runtime(),
+            'S14b': horizon_comparison('internal'),
+            'S15': pairwise_table('temporal_pairwise.csv'), 'S15b': horizon_comparison('temporal'),
+            'S16': t16_selection(), 'S17': t17_runtime(),
             'S18a': s18a, 'S18b': s18b, 'S19': t19_sensitivity()}
 
 

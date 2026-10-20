@@ -207,6 +207,71 @@ def decision_curves(horizon, population='all'):
     return pd.concat(rows, ignore_index=True)
 
 
+def horizon_table(metrics=('AUROC', 'AUPRC', 'F1', 'Brier'), n_boot=N_BOOT):
+    """8-year minus 6-year performance of each model (all participants).
+
+    The two horizons have different cohorts and prevalences, so differences in AUPRC, F1, and Brier largely reflect
+    the higher incidence at 8 years; AUROC is the comparable measure.
+    - Internal: the horizons use different cohorts and splits, so repeats are not paired; the difference of the means
+      is given a t interval with the two corrected variances added (conservative, as the overlapping cohorts are
+      positively correlated).
+    - Temporal: joint household cluster bootstrap over the union of the two 2010 cohorts (participants and households
+      in both are resampled together).
+    """
+    models = [m for m in MODELS if m in available_models(6) and m in available_models(8)]
+    rows = []
+    for m in models:
+        per = {}
+        for h in (6, 8):
+            d = load(h, m, 'metrics')
+            per[h] = d[(d['setting'] == 'internal') & (d['population'] == 'all')]
+        for k in metrics:
+            se2, means = 0, {}
+            for h in (6, 8):
+                v = per[h][k].to_numpy(float)
+                means[h] = v.mean()
+                se2 += (1 / len(v) + TEST_TRAIN_RATIO) * v.var(ddof=1)
+            diff, se = means[8] - means[6], np.sqrt(se2)
+            df = min(len(per[6]), len(per[8])) - 1
+            t = stats.t.ppf(0.975, df)
+            rows.append({'setting': 'internal', 'model': m, 'metric': k, 'estimate_6y': means[6], 'estimate_8y': means[8],
+                         'difference_8y_minus_6y': diff, 'ci_low': diff - t * se, 'ci_high': diff + t * se,
+                         'p_two_sided': 2 * stats.t.sf(abs(diff / se), df)})
+    preds = {h: {m: load(h, m, 'temporal') for m in models} for h in (6, 8)}
+    thr = {h: {m: load(h, m, 'selection')['temporal']['threshold'] for m in models} for h in (6, 8)}
+    hh = {h: preds[h][models[0]]['hhidpn'].to_numpy() // 1000 for h in (6, 8)}
+    households = np.union1d(hh[6], hh[8])
+    members = {}
+    for h in (6, 8):
+        codes = np.searchsorted(households, hh[h])
+        order = np.argsort(codes, kind='stable')
+        bounds = np.searchsorted(codes[order], np.arange(len(households) + 1))
+        members[h] = [order[bounds[i]:bounds[i + 1]] for i in range(len(households))]
+
+    def score(h, m, idx):
+        y, p = preds[h][m]['y'].to_numpy()[idx], preds[h][m]['p'].to_numpy()[idx]
+        return {k: v for k, v in discrimination(y, p, thr[h][m]).items() if k in metrics}
+
+    point = {(h, m): score(h, m, np.arange(len(hh[h]))) for h in (6, 8) for m in models}
+    boot = {(m, k): [] for m in models for k in metrics}
+    rng = np.random.default_rng(2026)
+    for _ in range(n_boot):
+        pick = rng.integers(0, len(households), len(households))
+        idx = {h: np.concatenate([members[h][i] for i in pick]) for h in (6, 8)}
+        for m in models:
+            s6, s8 = score(6, m, idx[6]), score(8, m, idx[8])
+            for k in metrics:
+                boot[(m, k)].append(s8[k] - s6[k])
+    for m in models:
+        for k in metrics:
+            d = np.asarray(boot[(m, k)])
+            lo, hi = np.percentile(d, [2.5, 97.5])
+            rows.append({'setting': 'temporal', 'model': m, 'metric': k, 'estimate_6y': point[(6, m)][k],
+                         'estimate_8y': point[(8, m)][k], 'difference_8y_minus_6y': point[(8, m)][k] - point[(6, m)][k],
+                         'ci_low': lo, 'ci_high': hi, 'p_two_sided': 2 * min(np.mean(d <= 0), np.mean(d >= 0))})
+    return pd.DataFrame(rows)
+
+
 def runtime_table(horizon):
     rows = []
     for m in available_models(horizon):
@@ -241,6 +306,8 @@ if __name__ == '__main__':
             out['calibration_curves'].append(calibration_curves(horizon, population))
             out['decision_curves'].append(decision_curves(horizon, population))
         out['runtime'].append(runtime_table(horizon))
+    if available_models(6) and available_models(8):
+        out['horizon_comparison'] = [horizon_table()]
     for name, frames in out.items():
         if frames:
             pd.concat(frames, ignore_index=True).to_csv(os.path.join(TABLES, f'{prefix}{name}.csv'), index=False)

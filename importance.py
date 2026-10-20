@@ -8,10 +8,12 @@ for fitting or selection.
   in the 2010 data (one-hot groups and functional items with their "don't do" indicator are permuted jointly),
   averaged over N_PERMUTATIONS permutations. The model is not refitted. 95% CIs: household cluster bootstrap of the
   importance, recomputed on each bootstrap sample from the stored predictions.
-- SHAP: exact SHAP values from the libraries' own implementations, for the models where they are exact and fast:
-  LightGBM (pred_contrib) and CatBoost (ShapValues) on the log-odds scale, and logistic regression (linear SHAP:
-  coefficient x (value - development mean)). Values are summed within each predictor group; importance is the mean
-  absolute SHAP value. Rank agreement with permutation importance is reported (Spearman).
+- SHAP: exact SHAP values for the models where they can be computed exactly: LightGBM (pred_contrib) and CatBoost
+  (ShapValues) on the log-odds scale; the decision tree (tree SHAP, shap.TreeExplainer, predicted probability);
+  logistic regression (linear SHAP: coefficient x (value - development mean)); and Gaussian naive Bayes, whose
+  log-odds are a sum of one term per input, g_j(x_j) = log N(x_j; class 1) - log N(x_j; class 0), so that its exact
+  SHAP value is g_j(x_j) minus the development mean of g_j. Values are summed within each predictor group; importance
+  is the mean absolute SHAP value. Rank agreement with permutation importance is reported (Spearman).
 
 Importance describes how much a model's discrimination depends on a predictor given the other predictors; it does
 not indicate a causal or modifiable effect, and correlated predictors share importance.
@@ -34,7 +36,7 @@ import evaluation
 
 N_PERMUTATIONS = 5
 N_BOOT = 500
-SHAP_MODELS = ('LR', 'LightGBM', 'CatBoost')
+SHAP_MODELS = ('LR', 'GNB', 'DT', 'LightGBM', 'CatBoost')
 
 
 def predictor_groups(predictors):
@@ -106,6 +108,13 @@ def shap_importance(model_name, model, X_dev, X_ext, groups, horizon):
         phi = model.get_feature_importance(Pool(X_ext), type='ShapValues')[:, :-1]
     elif model_name == 'LR':
         phi = (X_ext.to_numpy() - X_dev.to_numpy(dtype=np.float32).mean(axis=0)) * model.coef_[0]
+    elif model_name == 'GNB':
+        g_ext, g_dev = _gnb_terms(model, X_ext.to_numpy()), _gnb_terms(model, X_dev.to_numpy(dtype=np.float32))
+        phi = g_ext - g_dev.mean(axis=0)
+    elif model_name == 'DT':
+        import shap
+        phi = np.asarray(shap.TreeExplainer(model).shap_values(X_ext.to_numpy(), check_additivity=True))
+        phi = phi[..., 1] if phi.ndim == 3 else phi[1]  # class-1 probability
     else:
         raise ValueError(model_name)
     phi = pd.DataFrame(phi, columns=X_ext.columns)
@@ -114,6 +123,15 @@ def shap_importance(model_name, model, X_dev, X_ext, groups, horizon):
     df = pd.DataFrame(rows)
     df['rank'] = df['mean_abs_SHAP'].rank(ascending=False, method='min').astype(int)
     return df.sort_values('rank')
+
+
+def _gnb_terms(model, X):
+    """Per-input log-likelihood ratio terms of Gaussian naive Bayes; their sum plus the log prior ratio is the
+    log-odds of class 1."""
+    X = np.asarray(X, float)
+    mu, var = model.theta_, model.var_
+    logpdf = lambda c: -0.5 * (np.log(2 * np.pi * var[c]) + (X - mu[c]) ** 2 / var[c])
+    return logpdf(1) - logpdf(0)
 
 
 def run(horizon, models):

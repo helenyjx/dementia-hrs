@@ -10,7 +10,7 @@ Fig. S1 all participants vs complete cases: AUROC and AUPRC, internal and tempor
 Fig. S2 internal validation: precision and recall
 Fig. S3 temporal validation: precision and recall
 Fig. S4 decision curves (net benefit) in the 2010 cohort, one figure per horizon
-Fig. S5 SHAP vs permutation importance ranks (LR, LightGBM, CatBoost)
+Fig. S5 SHAP vs permutation importance ranks (models with exact SHAP: LR, GNB, DT, LightGBM, CatBoost)
 
 Usage: python make_figures.py
 """
@@ -80,7 +80,8 @@ def _style(ax, grid_axis='x'):
 def _save(fig, name):
     os.makedirs(OUT, exist_ok=True)
     for ext in ('pdf', 'png'):
-        fig.savefig(os.path.join(OUT, f'{name}.{ext}'), dpi=300, bbox_inches='tight')
+        fig.savefig(os.path.join(OUT, f'{name}.{ext}'), dpi=300, bbox_inches='tight',
+                    metadata={'CreationDate': None} if ext == 'pdf' else None)  # reproducible files
     plt.close(fig)
     print('wrote', name)
 
@@ -254,24 +255,37 @@ def shap_figure():
     perm = pd.read_csv(os.path.join(TABLES, 'importance_permutation_h6.csv'))
     shap = pd.read_csv(os.path.join(TABLES, 'importance_shap_h6.csv'))
     agree = pd.read_csv(os.path.join(TABLES, 'importance_rank_agreement_h6.csv')).set_index('model')
-    fig, axes = plt.subplots(1, 3, figsize=(7.2, 2.8), sharex=True, sharey=True)
-    for ax, m in zip(axes, ['LR', 'LightGBM', 'CatBoost']):
+    models = [m for m in MODELS if m in agree.index]
+    fig, axes = plt.subplots(2, 3, figsize=(7.2, 5.8), sharex=True, sharey=True)
+    axes = axes.ravel()
+    for ax in axes[len(models):]:
+        ax.axis('off')
+    notes = []
+    for ax, m in zip(axes, models):
         d = perm[perm['model'] == m][['variable', 'rank']].merge(
             shap[shap['model'] == m][['variable', 'rank']], on='variable', suffixes=('_perm', '_shap'))
         ax.plot([1, 60], [1, 60], color=REFERENCE, linewidth=0.8)
         ax.plot(d['rank_perm'], d['rank_shap'], 'o', color=HORIZON_COLOR[6], markersize=3.6, alpha=0.85,
                 markeredgecolor='white', markeredgewidth=0.4)
         top3 = d.sort_values('rank_perm').head(3)['variable']
-        ax.text(0.04, 0.04, 'Top 3 (permutation):\n' + '\n'.join(VARIABLE_LABELS[v] for v in top3),
-                transform=ax.transAxes, ha='left', va='bottom', fontsize=6.4, color=INK_2)
+        notes.append(f'{NAMES[m]}:\n' + ', '.join(VARIABLE_LABELS[v] for v in top3))
+        unused = int((shap[shap['model'] == m]['mean_abs_SHAP'] == 0).sum())
+        if unused > 10:  # predictors never used by the model share one tied rank (one point)
+            ax.text(0.97, 0.97, f'{unused} predictors not used\nby the model are tied\n(one point)',
+                    transform=ax.transAxes, ha='right', va='top', fontsize=6.4, color=INK_2)
         a = agree.loc[m]
         ax.set_title(f"{NAMES[m]}\nSpearman {a['spearman_rank_correlation']:.2f}; "
-                     f"{int(a['shared_top10'])} of top 10 shared", color=INK)
+                     f"top 10 shared: {int(a['shared_top10'])}", color=INK)
         ax.set_xlim(0, 61)
         ax.set_ylim(61, 0)
         _style(ax, grid_axis='both')
-        ax.set_xlabel('Permutation-importance rank')
-    axes[0].set_ylabel('SHAP rank')
+        ax.tick_params(labelbottom=True)
+    if len(models) < len(axes):
+        axes[len(models)].text(0.02, 0.98, 'Top 3 predictors by permutation importance\n\n' + '\n'.join(notes),
+                               transform=axes[len(models)].transAxes, ha='left', va='top', fontsize=6.6,
+                               color=INK_2, linespacing=1.5)
+    fig.supxlabel('Permutation-importance rank', fontsize=8, color=INK_2)
+    fig.supylabel('SHAP rank', fontsize=8, color=INK_2)
     fig.suptitle('Agreement between SHAP and permutation importance ranks (6-year horizon, 2010 cohort)', x=0.01,
                  ha='left', fontsize=9, color=INK)
     fig.tight_layout()
