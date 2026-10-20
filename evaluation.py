@@ -21,8 +21,8 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from scipy import stats
-from sklearn.metrics import (average_precision_score, brier_score_loss, f1_score, precision_score, recall_score,
-                             roc_auc_score)
+from sklearn.metrics import (accuracy_score, average_precision_score, brier_score_loss, f1_score, precision_score,
+                             recall_score, roc_auc_score)
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RESULTS = os.path.join(ROOT, 'results')
@@ -67,7 +67,8 @@ def calibration(y, p):
 def discrimination(y, p, threshold):
     pred = (p >= threshold).astype(int)
     return {'AUROC': roc_auc_score(y, p), 'AUPRC': average_precision_score(y, p),
-            'Precision': precision_score(y, pred, zero_division=0), 'Recall': recall_score(y, pred),
+            'Accuracy': accuracy_score(y, pred), 'Precision': precision_score(y, pred, zero_division=0),
+            'Recall': recall_score(y, pred),
             'F1': f1_score(y, pred), 'Brier': brier_score_loss(y, p)}
 
 
@@ -167,7 +168,7 @@ def internal_table(horizon, population='all'):
         d[['calibration_intercept', 'calibration_slope', 'OE_ratio']] = cal[['calibration_intercept',
                                                                                'calibration_slope', 'OE_ratio']]
         per_repeat[m] = d.set_index('repeat')
-        for k in ['AUROC', 'AUPRC', 'Precision', 'Recall', 'F1', 'Brier', 'calibration_intercept',
+        for k in ['AUROC', 'AUPRC', 'Accuracy', 'Precision', 'Recall', 'F1', 'Brier', 'calibration_intercept',
                   'calibration_slope', 'OE_ratio']:
             mean, lo, hi = corrected_t_interval(d[k])
             rows.append({'horizon': horizon, 'population': population, 'model': m, 'metric': k, 'estimate': mean,

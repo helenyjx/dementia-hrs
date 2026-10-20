@@ -21,6 +21,10 @@ dementia/
 ├── benchmark.py                           # Evaluation protocol: splits, training-only imputation, tuning, thresholds, metrics
 ├── run_benchmark.py                       # Command-line runner for benchmark.py
 ├── results.ipynb                          # Tables of the benchmark results
+├── evaluation.py                          # Confidence intervals, paired differences, calibration, decision curves, runtime
+├── importance.py                          # Permutation and SHAP importance on the 2010 cohort
+├── cohort_tables.py                       # Participant flow and cohort-comparison tables
+├── make_figures.py                        # Manuscript figures from results/tables (written to figures/)
 ├── feature_importance.py                  # Permutation-based feature importance (sklearn-style classifiers)
 ├── neuralclassifier_fixed.py              # PyTorch classifier wrappers (MLP/GNN/GCN/GAT) with focal loss + SMOTE
 ├── nnblocks.py                            # GraphSAGE / GCN / GAT building blocks (PyTorch Geometric)
@@ -34,6 +38,7 @@ dementia/
 ├── data_management (2000-2006).ipynb      # Builds the 6-year analytic dataset and internal/external splits
 ├── data_management (2000-2008).ipynb      # Builds the 8-year analytic dataset and internal/external splits
 ├── results/                               # Benchmark outputs per horizon and model (created by run_benchmark.py)
+├── figures/                               # Manuscript figures (PDF and PNG, created by make_figures.py)
 └── data/
     ├── preprocessed data/                 # Per-year cleaned/encoded CSVs produced by preprocess_*.ipynb
     ├── 2000-2006/                         # Model-ready folds for the 6-year prediction horizon
@@ -126,6 +131,14 @@ python run_benchmark.py impute --horizon 8
 python run_benchmark.py fit --horizon 8 --model all
 ```
 A single model can be run with `--model LightGBM` (names: LR, GNB, DT, LightGBM, CatBoost, RealMLP, TabICL, GAT). Then open `results.ipynb` for the tables.
+
+**6. Tables and figures** — aggregate tables (written to `results/tables/`) and manuscript figures (written to `figures/`):
+```bash
+python evaluation.py
+python cohort_tables.py
+python importance.py --horizon 6
+python make_figures.py
+```
 
 ## Model Architecture
 
