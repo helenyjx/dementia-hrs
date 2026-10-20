@@ -25,6 +25,7 @@ dementia/
 ├── importance.py                          # Permutation and SHAP importance on the 2010 cohort
 ├── cohort_tables.py                       # Participant flow and cohort-comparison tables
 ├── make_figures.py                        # Manuscript figures from results/tables (written to figures/)
+├── supplementary_tables.py                # Formatted Tables 2-3 and Supplementary Tables S10-S19 (results/tables/supplementary/)
 ├── feature_importance.py                  # Permutation-based feature importance (sklearn-style classifiers)
 ├── neuralclassifier_fixed.py              # PyTorch classifier wrappers (MLP/GNN/GCN/GAT) with focal loss + SMOTE
 ├── nnblocks.py                            # GraphSAGE / GCN / GAT building blocks (PyTorch Geometric)
@@ -138,6 +139,7 @@ python evaluation.py
 python cohort_tables.py
 python importance.py --horizon 6
 python make_figures.py
+python supplementary_tables.py --docx "Supplementary Tables.docx"
 ```
 
 ## Model Architecture
