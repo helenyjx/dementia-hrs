@@ -218,7 +218,12 @@ def t17_runtime():
 def t18_shap():
     perm, shap = read('importance_permutation_h6.csv'), read('importance_shap_h6.csv')
     agree = ordered(read('importance_rank_agreement_h6.csv'))
+    method = agree['method'].fillna('exact') if 'method' in agree else pd.Series('exact', index=agree.index)
     a = pd.DataFrame({'Model': agree['model'].map(NAMES),
+                      'SHAP method': [('KernelSHAP (approximate; 500 participants)' if k != 'exact' else
+                                       {'LR': 'exact (linear)', 'GNB': 'exact (additive log-odds)'}.get(m, 'exact (tree SHAP)'))
+                                      for m, k in zip(agree['model'], method)],
+                      'SHAP scale': ['probability' if m == 'DT' else 'log-odds' for m in agree['model']],
                       'Spearman rank correlation (60 predictors)': agree['spearman_rank_correlation'].map(lambda v: f'{v:.2f}'),
                       'Shared top-10 predictors': agree['shared_top10']})
     rows = []
@@ -231,8 +236,15 @@ def t18_shap():
                          'Permutation rank': p.at[v, 'rank'],
                          'Permutation importance, AUPRC drop (95% CI), points': fmt(p.at[v, 'importance_AUPRC_drop'],
                                                                                    p.at[v, 'ci_low'], p.at[v, 'ci_high'], 'AUPRC'),
-                         'SHAP rank': s.at[v, 'rank'], 'Mean |SHAP| (log-odds)': f'{s.at[v, "mean_abs_SHAP"]:.3f}'})
+                         'SHAP rank': s.at[v, 'rank'], 'Mean |SHAP|': f'{s.at[v, "mean_abs_SHAP"]:.3f}'})
     return a, pd.DataFrame(rows)
+
+
+def t18c_kernel_check():
+    d = ordered(read('importance_kernel_shap_check_h6.csv'))
+    return pd.DataFrame({'Model': d['model'].map(NAMES),
+                         'Spearman rank correlation, approximate vs exact SHAP': d['spearman_rank_correlation'].map(lambda v: f'{v:.2f}'),
+                         'Shared top-10 predictors': d['shared_top10']})
 
 
 def t19_sensitivity():
@@ -285,6 +297,9 @@ TITLES = {
            'seconds per fit includes prediction on the validation set; neural models on an NVIDIA GeForce RTX 4080).',
     'S18a': 'Supplementary Table S18a. Agreement between SHAP and permutation importance ranks (2010 cohort, 6-year horizon).',
     'S18b': 'Supplementary Table S18b. Predictors in the top 10 by either method.',
+    'S18c': 'Supplementary Table S18c. Check of the approximation: KernelSHAP with the settings used for RealMLP, '
+            'TabICL, and GAT, applied to models with exact SHAP values; agreement of the approximate ranks (500 '
+            'participants) with the exact ranks (all 2010 participants).',
     'S19': 'Supplementary Table S19. Outcome-definition sensitivity analysis: non-cases defined as assessed '
            'dementia-free at any follow-up wave, compared with the primary definition.',
 }
@@ -294,13 +309,18 @@ def build():
     i, t = read('internal_metrics.csv'), read('temporal_metrics.csv')
     s13a, s13b = t13_accuracy_complete()
     s18a, s18b = t18_shap()
-    return {'Table2': metric_table(i, MAIN_METRICS), 'Table3': metric_table(t, MAIN_METRICS),
-            'S10': t10_outcome_status(), 'S11': t11_complete_vs_incomplete(), 'S12': t12_overlap(),
-            'S13a': s13a, 'S13b': s13b, 'S14': pairwise_table('internal_pairwise.csv'),
-            'S14b': horizon_comparison('internal'),
-            'S15': pairwise_table('temporal_pairwise.csv'), 'S15b': horizon_comparison('temporal'),
-            'S16': t16_selection(), 'S17': t17_runtime(),
-            'S18a': s18a, 'S18b': s18b, 'S19': t19_sensitivity()}
+    s18c = t18c_kernel_check() if os.path.exists(os.path.join(TABLES, 'importance_kernel_shap_check_h6.csv')) else None
+    tables = {'Table2': metric_table(i, MAIN_METRICS), 'Table3': metric_table(t, MAIN_METRICS),
+              'S10': t10_outcome_status(), 'S11': t11_complete_vs_incomplete(), 'S12': t12_overlap(),
+              'S13a': s13a, 'S13b': s13b, 'S14': pairwise_table('internal_pairwise.csv'),
+              'S14b': horizon_comparison('internal'),
+              'S15': pairwise_table('temporal_pairwise.csv'), 'S15b': horizon_comparison('temporal'),
+              'S16': t16_selection(), 'S17': t17_runtime(),
+              'S18a': s18a, 'S18b': s18b}
+    if s18c is not None:
+        tables['S18c'] = s18c
+    tables['S19'] = t19_sensitivity()
+    return tables
 
 
 def write_docx(tables, path):

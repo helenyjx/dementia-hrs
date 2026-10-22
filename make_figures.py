@@ -10,7 +10,7 @@ Fig. S1 all participants vs complete cases: AUROC and AUPRC, internal and tempor
 Fig. S2 internal validation: precision and recall
 Fig. S3 temporal validation: precision and recall
 Fig. S4 decision curves (net benefit) in the 2010 cohort, one figure per horizon
-Fig. S5 SHAP vs permutation importance ranks (models with exact SHAP: LR, GNB, DT, LightGBM, CatBoost)
+Fig. S5 SHAP vs permutation importance ranks (exact SHAP: LR, GNB, DT, LightGBM, CatBoost; KernelSHAP: RealMLP, TabICL, GAT)
 
 Usage: python make_figures.py
 """
@@ -256,7 +256,11 @@ def shap_figure():
     shap = pd.read_csv(os.path.join(TABLES, 'importance_shap_h6.csv'))
     agree = pd.read_csv(os.path.join(TABLES, 'importance_rank_agreement_h6.csv')).set_index('model')
     models = [m for m in MODELS if m in agree.index]
-    fig, axes = plt.subplots(2, 3, figsize=(7.2, 5.8), sharex=True, sharey=True)
+    method = agree['method'].fillna('exact') if 'method' in agree else pd.Series('exact', index=agree.index)
+    approx = set(method.index[method != 'exact'])
+    ncol = 3
+    nrow = -(-(len(models) + 1) // ncol)  # one spare panel for the notes
+    fig, axes = plt.subplots(nrow, ncol, figsize=(7.2, 2.9 * nrow), sharex=True, sharey=True)
     axes = axes.ravel()
     for ax in axes[len(models):]:
         ax.axis('off')
@@ -265,8 +269,12 @@ def shap_figure():
         d = perm[perm['model'] == m][['variable', 'rank']].merge(
             shap[shap['model'] == m][['variable', 'rank']], on='variable', suffixes=('_perm', '_shap'))
         ax.plot([1, 60], [1, 60], color=REFERENCE, linewidth=0.8)
-        ax.plot(d['rank_perm'], d['rank_shap'], 'o', color=HORIZON_COLOR[6], markersize=3.6, alpha=0.85,
-                markeredgecolor='white', markeredgewidth=0.4)
+        if m in approx:  # open markers: approximate (KernelSHAP) values
+            ax.plot(d['rank_perm'], d['rank_shap'], 'o', color=HORIZON_COLOR[6], markersize=3.6,
+                    markerfacecolor='white', markeredgewidth=0.8)
+        else:
+            ax.plot(d['rank_perm'], d['rank_shap'], 'o', color=HORIZON_COLOR[6], markersize=3.6, alpha=0.85,
+                    markeredgecolor='white', markeredgewidth=0.4)
         top3 = d.sort_values('rank_perm').head(3)['variable']
         notes.append(f'{NAMES[m]}:\n' + ', '.join(VARIABLE_LABELS[v] for v in top3))
         unused = int((shap[shap['model'] == m]['mean_abs_SHAP'] == 0).sum())
@@ -274,14 +282,17 @@ def shap_figure():
             ax.text(0.97, 0.97, f'{unused} predictors not used\nby the model are tied\n(one point)',
                     transform=ax.transAxes, ha='right', va='top', fontsize=6.4, color=INK_2)
         a = agree.loc[m]
-        ax.set_title(f"{NAMES[m]}\nSpearman {a['spearman_rank_correlation']:.2f}; "
+        ax.set_title(f"{NAMES[m]}{' (approximate)' if m in approx else ''}\nSpearman {a['spearman_rank_correlation']:.2f}; "
                      f"top 10 shared: {int(a['shared_top10'])}", color=INK)
         ax.set_xlim(0, 61)
         ax.set_ylim(61, 0)
         _style(ax, grid_axis='both')
         ax.tick_params(labelbottom=True)
     if len(models) < len(axes):
-        axes[len(models)].text(0.02, 0.98, 'Top 3 predictors by permutation importance\n\n' + '\n'.join(notes),
+        # with all eight models the top-3 lists do not fit; the top predictors are shown in Fig. 5
+        note = ('Filled: exact SHAP\nOpen: approximate SHAP\n(KernelSHAP, 500 participants)' if approx else
+                'Top 3 predictors by permutation importance\n' + '\n'.join(notes))
+        axes[len(models)].text(0.02, 0.98, note,
                                transform=axes[len(models)].transAxes, ha='left', va='top', fontsize=6.6,
                                color=INK_2, linespacing=1.5)
     fig.supxlabel('Permutation-importance rank', fontsize=8, color=INK_2)
